@@ -14,6 +14,9 @@ import pandas as pd
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set(style="ticks", color_codes=True)
+from joblib import dump, load
+
+x_global=None
 
 class elbow(Resource):
     def get(self):
@@ -40,10 +43,61 @@ class elbow(Resource):
         seaborn_file = sns.pairplot(dataset)
         seaborn_file.savefig('files/seaborn.png')
 
+class Train(Resource):
+    def get(self):
+        return "dont know currently"
+
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('k')
+        args = parser.parse_args()
+        dataset = pd.read_csv('file.csv')
+        kmeans = KMeans(n_clusters=int(args['k']) , init='k-means++',max_iter = 300 , n_init=10,random_state = 0)
+        y_kmeans = kmeans.fit_predict(dataset)
+        # print(type(y_kmeans))
+        dataset['labels'] = y_kmeans
+        # print (dataset)
+        seaborn_file =sns.pairplot(dataset,hue='labels',diag_kind='hist')
+        seaborn_file.savefig('files/trained.png')
+        dataset = dataset.drop(columns='labels')
+        x = dataset.columns.to_list()
+        global x_global
+        x_global = x
+        ret = {}
+        ret['columns'] = x
+        ret['image'] = 'trained.png'
+        dump(kmeans, 'k-means.joblib')
+        return ret
+
+class predict(Resource):
+    def post(self):
+        global x_global
+        parser = reqparse.RequestParser()
+        for x in x_global:
+            parser.add_argument(name=x,required=True)
+        args = parser.parse_args()
+        kmeans = load('k-means.joblib')
+        # print (kmeans.get_params())
+        values = []
+        for ar in args:
+            values.append(args[ar])
+        y = kmeans.predict([values])
+        return y.tolist()[0]
 
 
 api.add_resource(elbow, '/')
+api.add_resource(predict, '/predict')
+api.add_resource(Train, '/train')
 
+class add_resource:
+    def __init__(self):
+        self.parser = reqparse.RequestParser()
+
+    def add_argument(self,name):
+        self.parser.add_argument(name,required=True)
+    def return_arg(self):
+        args = self.parser.parse_args()
+        return args
 @app.route('/download', methods=['GET', 'POST'])
 def download():
     parser = reqparse.RequestParser()
@@ -51,5 +105,18 @@ def download():
     args = parser.parse_args()
     path = 'files/'+ args['file_name']
     return send_file(path,as_attachment=True)
+
+
+
+
+
+
+
+
+
+
+
 # app.run(host='192.168.43.7',debug=True)
 app.run(debug=True)
+
+
