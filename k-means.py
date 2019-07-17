@@ -12,6 +12,8 @@ import json
 import pandas as pd
 
 from sklearn.cluster import KMeans
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns; sns.set(style="ticks", color_codes=True)
 from joblib import dump, load
@@ -24,7 +26,7 @@ class elbow(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('number_of_max_cluster',required=True)
-        parser.add_argument('file', type=werkzeug.datastructures.FileStorage,location='files')
+        parser.add_argument('file', type=werkzeug.datastructures.FileStorage,location='files',required=True)
         args = parser.parse_args()
         file = args['file']
         file.save("file.csv")
